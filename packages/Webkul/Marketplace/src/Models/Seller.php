@@ -2,40 +2,68 @@
 
 namespace Webkul\Marketplace\Models;
 
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Webkul\Customer\Models\CustomerProxy;
-use Webkul\Marketplace\Contracts\Seller as SellerContract;
-use Webkul\Core\Eloquent\TranslatableModel;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Webkul\Product\Models\Product;
+use Webkul\Marketplace\Models\Commission;
+use Webkul\Marketplace\Models\Payout;
 
-class Seller extends TranslatableModel implements SellerContract
+class Seller extends Authenticatable
 {
     use HasFactory;
 
-    protected $table = 'marketplace_sellers';
+    protected $table = 'sellers';
 
     protected $fillable = [
-        'customer_id',
-        'shop_title',
-        'shop_description',
-        'is_approved',
-        'commission_rate',
-        'status',
+        'name', 'email', 'password',
+        'shop_title', 'shop_url', 'phone', 'business_description',
+        'logo_path', 'banner_path',
+        'address', 'city', 'state', 'country', 'postcode',
+        'status', 'commission_rate', 'is_featured',
     ];
 
-    public $translatedAttributes = [
-        'shop_title',
-        'shop_description',
+    protected $hidden = ['password', 'remember_token'];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'is_featured'        => 'boolean',
+        'commission_rate'    => 'decimal:2',
     ];
 
-    protected $with = ['translations'];
-
-    public function sellerProducts()
+    public function products(): HasMany
     {
-        return $this->hasMany(ProductSeller::class, 'seller_id');
+        return $this->hasMany(Product::class, 'seller_id');
     }
 
-    public function customer()
+    public function commissions(): HasMany
     {
-        return $this->belongsTo(CustomerProxy::modelClass(), 'customer_id');
+        return $this->hasMany(Commission::class, 'seller_id');
+    }
+
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(Payout::class, 'seller_id');
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    /**
+     * Effective commission rate: seller-specific override, else global config default.
+     */
+    public function commissionRate(): float
+    {
+        return (float) ($this->commission_rate ?? config('marketplace.commission.default_rate', 10));
+    }
+
+    public function availableBalance(): float
+    {
+        $earned = $this->commissions()->where('status', 'payable')->sum('seller_earning');
+        $paidOut = $this->payouts()->whereIn('status', ['approved', 'paid'])->sum('amount');
+
+        return round((float) $earned - (float) $paidOut, 2);
     }
 }

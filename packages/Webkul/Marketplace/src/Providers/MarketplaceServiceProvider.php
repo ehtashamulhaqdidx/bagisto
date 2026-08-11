@@ -2,45 +2,60 @@
 
 namespace Webkul\Marketplace\Providers;
 
-use Illuminate\Routing\Router;
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
-use Webkul\Core\Providers\CoreModuleServiceProvider;
-use Webkul\Marketplace\Http\Middleware\MarketplaceSellerMiddleware;
-use Webkul\Marketplace\Http\Middleware\EnsureSellerIsApproved;
+use Webkul\Marketplace\Console\Commands\MarketplaceInstall;
+use Webkul\Marketplace\Http\Middleware\Seller as SellerMiddleware;
+use Webkul\Marketplace\Listeners\GenerateCommission;
 
 class MarketplaceServiceProvider extends ServiceProvider
 {
-    /**
-     * Register services.
-     */
     public function register(): void
     {
-        $this->registerCommands();
+        $this->mergeConfigFrom(__DIR__.'/../Config/marketplace.php', 'marketplace');
     }
 
-    /**
-     * Bootstrap services.
-     */
-    public function boot(Router $router): void
+    public function boot(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../Database/Migrations');
-
-        $this->loadTranslationsFrom(__DIR__.'/../Resources/lang', 'marketplace');
+        $this->loadRoutesFrom(__DIR__.'/../Routes/seller-routes.php');
+        $this->loadRoutesFrom(__DIR__.'/../Routes/admin-routes.php');
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'marketplace');
-        $this->loadRoutesFrom(__DIR__.'/../Routes/web.php');
+        $this->loadTranslationsFrom(__DIR__.'/../Resources/lang', 'marketplace');
 
-        // keep legacy alias if present
-        $router->aliasMiddleware('marketplace.seller', MarketplaceSellerMiddleware::class);
-        $router->aliasMiddleware('marketplace.seller.approved', EnsureSellerIsApproved::class);
+        $this->publishes([
+            __DIR__.'/../Config/marketplace.php' => config_path('marketplace.php'),
+        ], 'marketplace-config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                MarketplaceInstall::class,
+            ]);
+        }
+
+        $this->registerMiddleware();
+        $this->registerEventListeners();
+    }
+
+    protected function registerMiddleware(): void
+    {
+        /** @var Kernel $kernel */
+        $kernel = $this->app->make(Kernel::class);
+
+        $kernel->appendMiddlewareToGroup('web', SellerMiddleware::class);
+
+        Route::aliasMiddleware('marketplace.seller', SellerMiddleware::class);
     }
 
     /**
-     * Register console commands.
+     * Binds commission generation to Bagisto's invoice-creation event.
+     * If your installed Bagisto version fires a differently named event
+     * for invoice creation, update the event name string below to match.
      */
-    protected function registerCommands(): void
+    protected function registerEventListeners(): void
     {
-        if ($this->app->runningInConsole()) {
-            // $this->commands([]);
-        }
+        Event::listen('sales.invoice.save.after', [GenerateCommission::class, 'handle']);
     }
 }

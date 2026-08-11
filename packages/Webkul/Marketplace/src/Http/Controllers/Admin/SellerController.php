@@ -2,55 +2,58 @@
 
 namespace Webkul\Marketplace\Http\Controllers\Admin;
 
-use Webkul\Marketplace\Http\Requests\SellerRequest;
-use Webkul\Admin\Http\Controllers\Controller;
-use Webkul\Marketplace\Models\SellerProxy;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Illuminate\View\View;
+use Webkul\Marketplace\Models\Seller;
+use Webkul\Marketplace\Repositories\SellerRepository;
 
 class SellerController extends Controller
 {
-    public function index()
+    public function __construct(protected SellerRepository $sellerRepository)
     {
-        $sellers = SellerProxy::modelClass()::all();
+    }
+
+    public function index(Request $request): View
+    {
+        $sellers = $this->sellerRepository->paginateForAdmin($request->get('status'));
 
         return view('marketplace::admin.sellers.index', compact('sellers'));
     }
 
-    public function create()
+    public function edit(int $id): View
     {
-        return view('marketplace::admin.sellers.create');
-    }
-
-    public function store(SellerRequest $request)
-    {
-        SellerProxy::modelClass()::create($request->validated());
-
-        return redirect()->route('admin.marketplace.sellers.index');
-    }
-
-    public function edit($id)
-    {
-        $seller = SellerProxy::modelClass()::findOrFail($id);
+        $seller = Seller::findOrFail($id);
 
         return view('marketplace::admin.sellers.edit', compact('seller'));
     }
 
-    public function update(SellerRequest $request, $id)
+    public function update(Request $request, int $id): RedirectResponse
     {
-        $seller = SellerProxy::modelClass()::findOrFail($id);
-        $seller->update($request->validated());
+        $seller = Seller::findOrFail($id);
 
-        return redirect()->route('admin.marketplace.sellers.index');
-    }
-
-    public function approve($id)
-    {
-        $seller = SellerProxy::modelClass()::findOrFail($id);
-
-        $seller->update([
-            'is_approved' => true,
-            'status' => true,
+        $data = $request->validate([
+            'status'          => ['required', 'in:pending,approved,disapproved,suspended'],
+            'commission_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ]);
 
-        return redirect()->back();
+        $seller->update([
+            'status'          => $data['status'],
+            'commission_rate' => $data['commission_rate'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('marketplace.admin.sellers.index')
+            ->with('success', 'Seller updated.');
+    }
+
+    public function destroy(int $id): RedirectResponse
+    {
+        Seller::findOrFail($id)->delete();
+
+        return redirect()
+            ->route('marketplace.admin.sellers.index')
+            ->with('success', 'Seller removed.');
     }
 }
