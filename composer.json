@@ -85,6 +85,7 @@
             "Webkul\\FPC\\": "packages/Webkul/FPC/src",
             "Webkul\\GDPR\\": "packages/Webkul/GDPR/src",
             "Webkul\\ImageCache\\": "packages/Webkul/ImageCache/src",
+            "Webkul\\Marketplace\\": "packages/Webkul/Marketplace/src",
             "Webkul\\Installer\\": "packages/Webkul/Installer/src",
             "Webkul\\Inventory\\": "packages/Webkul/Inventory/src",
             "Webkul\\MagicAI\\": "packages/Webkul/MagicAI/src",

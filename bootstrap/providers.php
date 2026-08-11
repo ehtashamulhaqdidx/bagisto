@@ -19,6 +19,7 @@ use Webkul\EUWithdrawal\Providers\EUWithdrawalServiceProvider;
 use Webkul\FPC\Providers\FPCServiceProvider;
 use Webkul\GDPR\Providers\GDPRServiceProvider;
 use Webkul\ImageCache\Providers\ImageCacheServiceProvider;
+use Webkul\Marketplace\Providers\MarketplaceServiceProvider;
 use Webkul\Installer\Providers\InstallerServiceProvider;
 use Webkul\Inventory\Providers\InventoryServiceProvider;
 use Webkul\MagicAI\Providers\MagicAIServiceProvider;
@@ -71,6 +72,7 @@ return [
     FPCServiceProvider::class,
     GDPRServiceProvider::class,
     ImageCacheServiceProvider::class,
+    MarketplaceServiceProvider::class,
     InstallerServiceProvider::class,
     InventoryServiceProvider::class,
     MagicAIServiceProvider::class,

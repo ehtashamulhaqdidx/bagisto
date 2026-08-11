@@ -29,6 +29,9 @@ class RegistrationRequest extends FormRequest
             'last_name' => 'string|required',
             'email' => 'email|required|unique:customers,email,NULL,id,channel_id,'.core()->getCurrentChannel()->id,
             'password' => 'confirmed|min:6|required',
+            'become_seller' => 'nullable|boolean',
+            'shop_title' => 'nullable|string|max:255',
+            'shop_description' => 'nullable|string',
         ];
 
         return Captcha::getValidations($rules);

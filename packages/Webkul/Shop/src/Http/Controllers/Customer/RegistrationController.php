@@ -13,6 +13,7 @@ use Webkul\Customer\Repositories\CustomerGroupRepository;
 use Webkul\Customer\Repositories\CustomerRepository;
 use Webkul\Shop\Http\Controllers\Controller;
 use Webkul\Shop\Http\Requests\Customer\RegistrationRequest;
+use Webkul\Marketplace\Models\SellerProxy;
 use Webkul\Shop\Mail\Customer\EmailVerificationNotification;
 use Webkul\Shop\Mail\Customer\RegistrationNotification;
 
@@ -94,6 +95,17 @@ class RegistrationController extends Controller
         }
 
         Event::dispatch('customer.create.after', $customer);
+
+        // Auto-create seller if requested during registration
+        if (request()->input('become_seller')) {
+            SellerProxy::modelClass()::create([
+                'customer_id' => $customer->id,
+                'shop_title' => request()->input('shop_title'),
+                'shop_description' => request()->input('shop_description'),
+                'is_approved' => false,
+                'status' => false,
+            ]);
+        }
 
         Event::dispatch('customer.registration.after', $customer);
 
