@@ -2,7 +2,7 @@
 
 namespace Webkul\Marketplace\Providers;
 
-use Illuminate\Contracts\Http\Kernel;
+
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -41,10 +41,7 @@ class MarketplaceServiceProvider extends ServiceProvider
 
     protected function registerMiddleware(): void
     {
-        /** @var Kernel $kernel */
-        $kernel = $this->app->make(Kernel::class);
-
-        $kernel->appendMiddlewareToGroup('web', SellerMiddleware::class);
+        
 
         Route::aliasMiddleware('marketplace.seller', SellerMiddleware::class);
     }

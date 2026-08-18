@@ -48,6 +48,11 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+
+        'seller' => [
+    'driver'   => 'session',
+    'provider' => 'sellers',
+                    ],
     ],
 
     /*
@@ -76,6 +81,10 @@ return [
         'admins' => [
             'driver' => 'eloquent',
             'model' => Admin::class,
+        ],
+        'sellers' => [
+            'driver' => 'eloquent',
+            'model'  => Webkul\Marketplace\Models\Seller::class,
         ],
     ],
 
@@ -112,5 +121,6 @@ return [
             'expire' => 60,
             'throttle' => 60,
         ],
+
     ],
 ];

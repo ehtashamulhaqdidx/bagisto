@@ -9,7 +9,7 @@ use Webkul\Marketplace\Http\Controllers\Seller\PayoutController;
 use Webkul\Marketplace\Http\Controllers\Seller\ProductController;
 use Webkul\Marketplace\Http\Controllers\Seller\ShipmentController;
 
-Route::prefix('marketplace/seller')->group(function () {
+Route::middleware('web')->prefix('marketplace/seller')->group(function () {
 
     // Guest-only auth routes
     Route::middleware('guest:seller')->group(function () {
