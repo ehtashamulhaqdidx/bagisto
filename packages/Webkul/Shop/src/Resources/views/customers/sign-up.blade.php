@@ -33,7 +33,7 @@
             >
                 <img
                     src="{{ core()->getCurrentChannel()->logo_url ?? bagisto_asset('images/logo.svg') }}"
-                    alt="{{ config('app.name') }}"
+                    alt="{{ core()->getCurrentChannel()->logo_alt ?: config('app.name') }}"
                     width="131"
                     height="29"
                 >
@@ -206,59 +206,6 @@
                     @endif
 
                     {!! view_render_event('bagisto.shop.customers.signup_form.newsletter_subscription.after') !!}
-
-                    <!-- Become Seller Option -->
-                    <div class="mb-5 flex select-none items-center gap-1.5">
-                        <input
-                            type="checkbox"
-                            name="become_seller"
-                            id="become-seller"
-                            value="1"
-                            class="peer hidden"
-                        />
-
-                        <label
-                            class="icon-uncheck peer-checked:icon-check-box cursor-pointer text-2xl text-navyBlue peer-checked:text-navyBlue"
-                            for="become-seller"
-                        ></label>
-
-                        <label
-                            class="cursor-pointer select-none text-base text-zinc-500 max-sm:text-sm ltr:pl-0 rtl:pr-0"
-                            for="become-seller"
-                        >
-                            I want to become a seller
-                        </label>
-                    </div>
-
-                    <div class="mb-5">
-                        <x-shop::form.control-group>
-                            <x-shop::form.control-group.label>
-                                Shop Name
-                            </x-shop::form.control-group.label>
-
-                            <x-shop::form.control-group.control
-                                type="text"
-                                class="px-6 py-4"
-                                name="shop_title"
-                                :value="old('shop_title')"
-                                placeholder="Optional shop name"
-                            />
-                        </x-shop::form.control-group>
-
-                        <x-shop::form.control-group>
-                            <x-shop::form.control-group.label>
-                                Shop Description
-                            </x-shop::form.control-group.label>
-
-                            <x-shop::form.control-group.control
-                                type="text"
-                                class="px-6 py-4"
-                                name="shop_description"
-                                :value="old('shop_description')"
-                                placeholder="Optional description"
-                            />
-                        </x-shop::form.control-group>
-                    </div>
 
                     @if(
                         core()->getConfigData('general.gdpr.settings.enabled')

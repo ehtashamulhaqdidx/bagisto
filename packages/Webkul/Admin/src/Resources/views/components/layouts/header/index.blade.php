@@ -44,7 +44,7 @@
     </div>
 
     <div class="flex items-center gap-1 sm:gap-2.5">
-        <!-- Dark mode Switcher -->
+        <!-- Dark Mode Switcher -->
         <v-dark>
             <div class="flex">
                 <span
@@ -77,7 +77,7 @@
             </span>
         </v-notifications>
 
-        <!-- Admin profile -->
+        <!-- Admin Profile -->
         <x-admin::dropdown position="bottom-{{ core()->getCurrentLocale()->direction === 'ltr' ? 'right' : 'left' }}">
             <x-slot:toggle>
                 @if ($admin->image)
@@ -118,7 +118,7 @@
                         @lang('admin::app.components.layouts.header.my-account')
                     </a>
 
-                    <!--Admin logout-->
+                    <!-- Admin Logout -->
                     <x-admin::form
                         method="DELETE"
                         action="{{ route('admin.session.destroy') }}"
@@ -210,6 +210,39 @@
                         @endif
                     </div>
                 @endforeach
+
+                <!-- Help & Resources -->
+                @php
+                    $isHelpActive = request()->routeIs('admin.help.index');
+                @endphp
+
+                <!-- Divider -->
+                <div class="my-1 border-t border-gray-200 dark:border-gray-800"></div>
+
+                <div class="group/item relative">
+                    <a
+                        href="{{ route('admin.help.index') }}"
+                        class="flex items-center gap-2 p-1.5 cursor-pointer hover:rounded-lg {{ $isHelpActive ? 'bg-blue-600 rounded-lg' : 'hover:bg-gray-100 hover:dark:bg-gray-950' }} sm:gap-2.5"
+                    >
+                        <svg
+                            class="h-5 w-5 shrink-0 {{ $isHelpActive ? 'text-white' : 'text-gray-600 dark:text-gray-300' }} sm:h-6 sm:w-6"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <circle cx="12" cy="12" r="9"></circle>
+                            <path d="M9.4 9.3a2.6 2.6 0 0 1 5.05.85c0 1.7-2.45 2.05-2.45 3.6"></path>
+                            <path d="M12 17.2h.01"></path>
+                        </svg>
+
+                        <p class="font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap text-sm {{ $isHelpActive ? 'text-white' : '' }} sm:text-base">
+                            @lang('admin::app.components.layouts.sidebar.help')
+                        </p>
+                    </a>
+                </div>
             </nav>
         </div>
     </x-slot>
@@ -243,7 +276,7 @@
                         class="cursor-pointer p-2 hover:bg-gray-100 dark:hover:bg-gray-950 sm:p-4"
                         :class="{ 'border-b-2 border-blue-600': activeTab == tab.key }"
                         v-for="tab in tabs"
-                        @click="activeTab = tab.key; search();"
+                        @click="chooseTab(tab.key)"
                     >
                         @{{ tab.title }}
                     </div>
@@ -487,18 +520,24 @@
 
                     searchTerm: '',
 
+                    hasChosenTab: false,
+
+                    searchId: 0,
+
                     searchedResults: {
-                        products: [],
-                        orders: [],
-                        categories: [],
-                        customers: []
+                        products: { data: [] },
+                        orders: { data: [] },
+                        categories: { data: [] },
+                        customers: { data: [] }
                     },
                 }
             },
 
             watch: {
                 searchTerm: function(newVal, oldVal) {
-                    this.search()
+                    this.hasChosenTab = false;
+
+                    this.search();
                 }
             },
 
@@ -511,9 +550,19 @@
             },
 
             methods: {
-                search() {
-                    if (this.searchTerm.length <= 1) {
-                        this.searchedResults[this.activeTab] = [];
+                /**
+                 * Search the tab on screen, and move to one that has something when it does not.
+                 */
+                async search() {
+                    /**
+                     * Written as a greater-than test rather than a less-than one: a less-than
+                     * sign in a script inside a Blade view opens a tag to anything stripping them,
+                     * which swallows the page from here to the next angle bracket.
+                     */
+                    const isLongEnough = this.searchTerm.length > 1;
+
+                    if (! isLongEnough) {
+                        this.resetResults();
 
                         this.isDropdownOpen = false;
 
@@ -522,20 +571,88 @@
 
                     this.isDropdownOpen = true;
 
-                    let self = this;
-
                     this.isLoading = true;
 
-                    this.$axios.get(this.tabs[this.activeTab].endpoint, {
+                    const searchId = ++this.searchId;
+
+                    const results = await this.fetchResults(this.activeTab);
+
+                    if (searchId !== this.searchId) {
+                        return;
+                    }
+
+                    this.searchedResults[this.activeTab] = results;
+
+                    if (
+                        ! this.hasChosenTab
+                        && ! results.data.length
+                    ) {
+                        await this.showFirstTabWithResults(searchId);
+                    }
+
+                    if (searchId === this.searchId) {
+                        this.isLoading = false;
+                    }
+                },
+
+                /**
+                 * Move to the first tab that has something to show for the term.
+                 */
+                async showFirstTabWithResults(searchId) {
+                    for (const key of Object.keys(this.tabs)) {
+                        if (key === this.activeTab) {
+                            continue;
+                        }
+
+                        const results = await this.fetchResults(key);
+
+                        if (searchId !== this.searchId) {
+                            return;
+                        }
+
+                        this.searchedResults[key] = results;
+
+                        if (results.data.length) {
+                            this.activeTab = key;
+
+                            return;
+                        }
+                    }
+
+                    /**
+                     * Nothing anywhere, so back to the tab a search starts on rather than
+                     * leaving the reader on whichever one the term before happened to open.
+                     */
+                    this.activeTab = Object.keys(this.tabs)[0];
+                },
+
+                /**
+                 * Show a tab because the user asked for it, and keep them on it.
+                 */
+                chooseTab(key) {
+                    this.activeTab = key;
+
+                    this.hasChosenTab = true;
+
+                    this.search();
+                },
+
+                /**
+                 * Ask one tab's endpoint what it has for the term.
+                 */
+                fetchResults(tab) {
+                    return this.$axios.get(this.tabs[tab].endpoint, {
                             params: {query: this.searchTerm}
                         })
-                        .then(function(response) {
-                            self.searchedResults[self.activeTab] = response.data;
+                        .then(response => ({...response.data, data: response.data?.data ?? []}))
+                        .catch(() => ({data: []}));
+                },
 
-                            self.isLoading = false;
-                        })
-                        .catch(function (error) {
-                        })
+                /**
+                 * Forget what every tab was showing.
+                 */
+                resetResults() {
+                    Object.keys(this.tabs).forEach(key => this.searchedResults[key] = {data: []});
                 },
 
                 handleFocusOut(e) {
